@@ -1,0 +1,16 @@
+:class _Collector
+  :var error Bool: False
+  :const trim_fraction_lower F64: 0.05 // TODO: configurable per benchmark
+  :const trim_fraction_upper F64: 0.05 // TODO: configurable per benchmark
+  :const iteration_count USize: 100000 // TODO: variable by ballpark timing
+  :var _samples: Array(F64).new_iso(@iteration_count)
+
+  :fun is_ready_to_finish: @_samples.size >= @iteration_count
+
+  :fun ref "<<"(nanoseconds U64)
+    @_samples << nanoseconds.f64
+    @
+
+  :fun ref calculate_results
+    _Distribution.new(@_samples <<= Array(F64).new_iso(@iteration_count))
+      .trim_outliers(@trim_fraction_lower, @trim_fraction_upper)

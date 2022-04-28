@@ -1,0 +1,24 @@
+:actor Benchmark.Process
+  :let _env Env
+  :let _runners Array(Benchmark.Run.Any)'val
+  :let _results Array(_Distribution)
+
+  :new run(@_env, @_runners)
+    @_results = Array(_Distribution).new(@_runners.size)
+    @_run_next
+
+  :be _run_next
+    try @_runners[@_results.size]!._start(@)
+
+  :be _on_finished(name String, result)
+    // TODO: Handle when _Collector.error is true
+    // TODO: Better reporting
+    // TODO: Custom reporting (like `Spec.Reporter`)
+    @_env.out.print("name: \(name)")
+    @_env.out.print("mean: \(result.mean)")
+    @_env.out.print("median: \(result.median)")
+    @_env.out.print("+/-: \(result.scaled_median_absolute_deviation)")
+
+    @_results << result
+
+    @_run_next

@@ -1,0 +1,41 @@
+:class _Distribution.Spec
+  :is Spec
+  :const describes: "_Distribution"
+
+  :it "calculates the samples in the distribution"
+    assert: _Distribution.new([]).samples == []
+    assert: _Distribution.new([77, 81, 100]).samples == [77, 81, 100]
+
+  :it "sorts out of order samples on creation"
+    assert: _Distribution.new([100, 77, 81]).samples == [77, 81, 100]
+
+  :it "returns the size"
+    assert: _Distribution.new([]).size == 0
+    assert: _Distribution.new([77, 81, 100]).size == 3
+
+  :it "calculates the sum"
+    assert: _Distribution.new([]).sum == 0
+    assert: _Distribution.new([77, 81, 100]).sum == 258
+
+  :it "calculates the mean"
+    assert: _Distribution.new([]).mean.is_nan
+    assert: _Distribution.new([77, 81, 100]).mean == 86
+
+  :it "calculates the median"
+    assert: _Distribution.new([]).median.is_nan
+    assert: _Distribution.new([77, 81, 100]).median == 81
+    assert: _Distribution.new([77, 81, 83, 100]).median == 82
+
+  :it "calculates the absolute deviations"
+    assert: _Distribution.new([]).absolute_deviations.samples == []
+    assert: _Distribution.new([77, 81, 100])
+      .absolute_deviations.samples == [0, 4, 19]
+    assert: _Distribution.new([77, 81, 83, 100])
+      .absolute_deviations.samples == [1, 1, 5, 18]
+
+  :it "calculates the scaled median absolute deviation"
+    assert: _Distribution.new([]).scaled_median_absolute_deviation.is_nan
+    assert: _Distribution.new([77, 81, 100])
+      .scaled_median_absolute_deviation == 5.930408874022407
+    assert: _Distribution.new([77, 81, 83, 100])
+      .scaled_median_absolute_deviation == 4.447806655516805

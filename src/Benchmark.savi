@@ -1,0 +1,5 @@
+:trait Benchmark
+  :const measures String
+  :new
+  :fun ref run! None
+  :fun ref dispose None: None

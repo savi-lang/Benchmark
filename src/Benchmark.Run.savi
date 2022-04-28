@@ -1,0 +1,58 @@
+:trait tag Benchmark.Run.Any
+  :be _start(process Benchmark.Process)
+
+:actor Benchmark.Run(A Benchmark)
+  :is Benchmark.Run.Any
+
+  :let _env Env // TODO: put this in something similar to Spec.Context
+  :let _collector: _Collector.new
+  :var _process (Benchmark.Process | None): None
+  :new (@_env)
+
+  :be _start(@_process): @_run_next_sample
+
+  :be _run_next_sample
+    // If the collector is ready to finish, stop our behavior-recursing.
+    return @_finish if @_collector.is_ready_to_finish
+
+    // Run this iteration, collecting a measurement sample into the collector.
+    @_measure_sample
+
+    // Send a message to the runner's self to run this same behavior again.
+    @_run_next_sample
+
+    // Ensure that the GC will run before the behavior begins, so that any
+    // used memory will be freed up to allocate again during the next iteration.
+    _FFI.pony_triggergc(_FFI.pony_ctx)
+
+  :fun ref _measure_sample
+    // Create the benchmark instance. Any custom user state setup happens here.
+    benchmark = A.new
+
+    // Run the main benchmark code and measure how many nanoseconds it takes.
+    //
+    // TODO: Use a low-overhead measurement mechanism, like RDTSC on x86 CPUs.
+    // However, using RDTSC is a great deal more complicated and needs more
+    // research before we can be sure we are doing it correctly.
+    //
+    // See: https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-32-ia-64-benchmark-code-execution-paper.pdf
+    // See: https://cpufun.substack.com/p/fun-with-timers-and-cpuid
+    // See: http://oliveryang.net/2015/09/pitfalls-of-TSC-usage/
+    // See: https://llvm.org/docs/LangRef.html#llvm-readcyclecounter-intrinsic
+    // See: https://stackoverflow.com/a/12634857
+    @_collector << Time.Measure.nanoseconds -> (
+      try (
+        benchmark.run!
+      |
+        // If the benchmark code raises an error, we note that here,
+        // so that when we're reporting results we can show them as invalid.
+        @_collector.error = True
+      )
+    )
+
+    // Run any custom teardown code for the benchmark instance.
+    benchmark.dispose
+
+  :fun ref _finish
+    name = A.new.measures
+    try @_process.not!(None)._on_finished(name, @_collector.calculate_results)
