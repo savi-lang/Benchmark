@@ -1,0 +1,83 @@
+// TODO: Move this to a public type in a statistical computing package.
+:struct val _Distribution
+  :let samples Array(F64)'val
+  :new val _new_already_sorted(@samples)
+
+  :: Create a new distribution containing the given samples.
+  ::
+  :: The samples will be sorted before being exposed in the `samples` method,
+  :: so be aware that calling this constructor will incur a sorting cost.
+  ::
+  :: This constructor takes ownership of the samples array so that sorting
+  :: does not need to incur an allocation cost - they will be sorted "in place".
+  :new val (samples Array(F64)'iso)
+    // Incoming samples are sorted to make it easier to work with.
+    // We don't feel bad about mutating our arg because we took ownership: `iso`
+    samples.sort_in_place
+    @samples = --samples
+
+  :: Return the number of samples in the distribution.
+  :fun size: @samples.size
+
+  :: Return the total result of adding all of the samples together.
+  :fun sum F64
+    // TODO: When we have negative numbers, we need to see-saw sum them
+    // to keep the partial sums as near zero as possible (less rounding error).
+    // For now our only use cases deal with positive numbers, so summing
+    // them from the start to the end is already optimal for that case.
+    sum F64 = 0
+    @samples.each -> (sample | sum += sample)
+    sum
+
+  :: Return the `sum` of the samples divided by the `size` of samples.
+  :: Returns NaN if there are zero samples (via a divide by zero `size`)
+  :fun mean F64
+    @sum / @size.f64
+
+  :: Return the value found in the center of the distribution (50th percentile).
+  :: For an even number of samples, returns the mean of the two center values.
+  :: Returns NaN if there are zero samples.
+  :fun median F64
+    middle_index = @size / 2
+    try (
+      if @size.is_odd (
+        @samples[middle_index]!
+      |
+        (@samples[middle_index]! + @samples[middle_index - 1]!) / 2
+      )
+    |
+      F64.nan
+    )
+
+  // TODO: Document, rename, and/or remove.
+  // See https://ponylang.zulipchat.com/#narrow/stream/234733-off-topic/topic/standardized.20MAD
+  :fun scaled_median_absolute_deviation(scale = 1.4826022185056018)
+    @absolute_deviations.median * scale
+
+  :: Return a new `_Distribution` containing the absolute values of how far
+  :: each of the samples deviates from the `median` value.
+  ::
+  :: Note that as in every `_Distribution`, the results will be sorted, and
+  :: will thus not correspond to the order of the original `samples` that
+  :: they were calculated from.
+  :fun absolute_deviations
+    median = @median
+    list = Array(F64).new_iso(@size)
+    @samples.each -> (sample | list << (median - sample).abs) // TODO: use .map
+    @new(--list)
+
+  :: Return a new `_Distribution` with a trimmed set of samples, effectively
+  :: removing the given fraction of samples from the lower and upper ends.
+  ::
+  :: For example, if `trim_fraction_lower` is `0.1` and `trim_fraction_upper`
+  :: is `0.05`, then the new distribution will contain the samples from the
+  :: 10th percentile up to the 95th percentile of the original distribution.
+  :: Those bounds will be the 0th and 100th percentile of the new distribution.
+  ::
+  :: Returns an empty distribution if all of the samples are trimmed away.
+  :fun trim_outliers(trim_fraction_lower F64, trim_fraction_upper F64)
+    trim_count_lower = (@size.f64 * trim_fraction_lower).usize
+    trim_count_upper = (@size.f64 * trim_fraction_upper).usize
+    trim_bound_lower = trim_count_lower
+    trim_bound_upper = @size.saturating_subtract(trim_count_upper)
+    @_new_already_sorted(@samples.trim(trim_bound_lower, trim_bound_upper))

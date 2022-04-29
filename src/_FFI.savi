@@ -1,0 +1,6 @@
+:module _FFI
+  :ffi pony_ctx _FFI.PonyCtx
+  :ffi pony_triggergc(ctx _FFI.PonyCtx) None
+
+:alias _FFI.PonyCtx: CPointer(_FFI.PonyCtx.Opaque)'ref
+:struct _FFI.PonyCtx.Opaque

@@ -1,0 +1,27 @@
+:actor Main
+  :new (env Env)
+    Benchmark.Process.run(env, [
+      Benchmark.Run(My.Nothing.Benchmark).new(env)
+      Benchmark.Run(My.ArrayPush.Benchmark).new(env)
+    ])
+
+// TODO: account for overhead
+
+:struct My.Nothing.Benchmark
+  :is Benchmark
+  :const measures: "nothing"
+
+  :fun ref run! None: None
+
+:struct My.ArrayPush.Benchmark
+  :is Benchmark
+  :const measures: "array.push(\"Hello\")"
+
+  :let array Array(String)
+  :new
+    @array = [] // TODO: Move to field default value
+
+  :fun ref run! None
+    @array.push("Hello")
+    InhibitOptimization.ObserveResult(Array(String))[@array]
+    InhibitOptimization.observe_side_effects
